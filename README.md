@@ -56,3 +56,4 @@ It is very easy to build and automate its deployment either with `maven` or `Doc
 
 * BD 2022 Team - https://dei.uc.pt/lei/
 * University of Coimbra
+# BD_project
