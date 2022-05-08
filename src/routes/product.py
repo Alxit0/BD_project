@@ -1,14 +1,18 @@
-from flask import Blueprint
+from flask import Blueprint, request
+from .utils import validate_token
 
 product_routes = Blueprint("product_routes", __name__)
 
+@product_routes.before_request
+def verify_token():
+	token = request.headers['Authorization'].split()[1]
+	return validate_token(token)
 
 @product_routes.route('/dbproject/product', methods=["POST"])
 def create_product():
 	"""
 	Cada vendedor deve poder criar novos produtos para comercializar.
 	"""
-
 
 @product_routes.route('/dbproject/product/<product_id>', methods=["POST"])
 def udpate_product(product_id):
