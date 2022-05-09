@@ -11,14 +11,6 @@ status_code = {
 	'internal_error': 500
 }
 
-basic_user_atributes = ["username", "email", "password"]
-
-users_atributes = {
-	'comprador': ["morada"],
-	'vendedor': ["morada", "nif"],
-	'admin': []
-}
-
 def db_connection():
 	db = psycopg2.connect(
 		user='postgres',

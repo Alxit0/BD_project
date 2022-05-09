@@ -8,6 +8,17 @@ else:
 
 
 user_routes = Blueprint("user_routes", __name__)
+basic_user_atributes = ["username", "email", "password"]
+users_atributes = {
+	'comprador': ["morada"],
+	'vendedor': ["morada", "nif"],
+	'admin': []
+}
+users_priv = {
+	'comprador': 1,
+	'vendedor': 2,
+	'admin': 3
+}
 
 
 @user_routes.route("/", methods=["POST"])
@@ -19,7 +30,7 @@ def add_user():
 	if 'type' not in payload:
 		return make_response(
 			"api_error",
-			"Tipo ('type') de utilizador nao especificado (admin | vendedor | comprador)",
+			"Tipo ('type') de utilizador nao especificado (admnistrador | vendedor | comprador)",
 			message_title="error"
 		)
 	tipo = payload['type']
@@ -103,7 +114,7 @@ def add_user_helper(payload:dict, tipo):
 			"INSERT INTO utilizador (" + ', '.join(basic_user_atributes + ["privileges"]) + ")\
 				VALUES (%s, %s, %s, %s)\
 				RETURNING id",
-			tuple(map(payload.__getitem__, basic_user_atributes))+(2, )
+			tuple(map(payload.__getitem__, basic_user_atributes))+(users_priv[tipo], )
 		)
 	except errors.UniqueViolation:
 		con.rollback()
