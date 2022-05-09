@@ -1,18 +1,17 @@
-from flask import Flask
-from routes import all_routes
+from flask import Flask, Blueprint
+from routes import user_routes
 
 app = Flask(__name__)
-app.register_blueprint(all_routes, url_prefix="/dbproject")
+
+app_routes = Blueprint("app_routes", __name__)
+
+app_routes.register_blueprint(user_routes, url_prefix="/user")
 
 
-status_code = {
-	'sucess': 200,
-	'api_error': 400,
-	'internal_error': 500
-}
+app.register_blueprint(app_routes, url_prefix="/dbproject")
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
 	host = '127.0.0.1'
 	port = 8080
 	app.run(host=host, port=port, debug=True)

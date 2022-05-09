@@ -1,13 +1,22 @@
 from flask import jsonify
-from jwt import encode, decode, exceptions
-from datetime import datetime, timedelta
 import psycopg2
+from datetime import datetime, timedelta
+from jwt import encode, decode
 
 SECRET = "Hello World"
+
 status_code = {
 	'sucess': 200,
 	'api_error': 400,
 	'internal_error': 500
+}
+
+basic_user_atributes = ["username", "email", "password"]
+
+users_atributes = {
+	'comprador': ["morada"],
+	'vendedor': ["morada", "nif"],
+	'admin': []
 }
 
 def db_connection():
@@ -21,26 +30,41 @@ def db_connection():
 
 	return db
 
-def write_token(data: dict):
+
+def make_response(status, message, *, message_title="message"):
+	"""
+	sucess | api_error | internal_error
+	"""
+	return jsonify({"status": status_code[status], message_title: message})
+
+
+def check_atributes(payload:dict, *atributes):
+	temp = []
+	for i in atributes:
+		if i not in payload:
+			temp.append(i)
+	
+	return temp
+
+
+def write_token(data:dict):
 	expier_date = lambda time: datetime.now() + timedelta(minutes=time)
 	
 	token = encode(payload={**data, "exp": expier_date(30)}, key=SECRET, algorithm="HS256")
 	return token.encode("UTF-8")
 
-def validate_token(token, output=False):
-	try:
-		if output:
-			return decode(token, key=SECRET, algorithms=["HS256"])
-		decode(token, key=SECRET, algorithms=["HS256"])
-	except exceptions.DecodeError:
-		return jsonify({"message": "Invalid Token", "status": 401})
-	except exceptions.ExpiredSignatureError:
-		return jsonify({"message": "Expired Token", "status": 401})
 
-def check_atributs(payload:dict, *args):
-	falta = []
-	for i in args:
-		if i not in payload:
-			falta.append(i)
-	
-	return falta
+def check_if_admin(token):
+	_id = decode(token, key=SECRET, algorithms=["HS256"])["id"]
+
+	con = db_connection()
+	cur = con.cursor()
+
+	cur.execute("SELECT privileges FROM utilizador WHERE id=%s", (_id,))
+
+	priv = cur.fetchone()
+
+	con.rollback()
+	con.close()
+	print(priv)
+	return priv[0] == 3
