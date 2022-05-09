@@ -56,6 +56,7 @@ CREATE TABLE utilizador (
 	id	 SERIAL,
 	email	 VARCHAR(50) NOT NULL,
 	username VARCHAR(25) NOT NULL,
+	privileges INTEGER NOT NULL,
 	password VARCHAR(25) NOT NULL,
 	PRIMARY KEY(username)
 );
