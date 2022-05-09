@@ -52,7 +52,7 @@ def add_user():
 		)
 	
 	# check if as enough privileges
-	if not check_if_admin(request.headers['Authorization'].split()[1]):
+	if not check_if_creds(request.headers['Authorization'].split()[1], 3):
 		return make_response(
 			"api_error",
 			"Not enough privileges. Please log in with and admin acount."

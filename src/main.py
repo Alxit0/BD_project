@@ -1,11 +1,12 @@
 from flask import Flask, Blueprint
-from routes import user_routes
+from routes import user_routes, product_routes
 
 app = Flask(__name__)
 
 app_routes = Blueprint("app_routes", __name__)
 
 app_routes.register_blueprint(user_routes, url_prefix="/user")
+app_routes.register_blueprint(product_routes, url_prefix="/product")
 
 
 app.register_blueprint(app_routes, url_prefix="/dbproject")
