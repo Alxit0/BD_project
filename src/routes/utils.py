@@ -48,14 +48,14 @@ def write_token(data:dict):
 
 
 def check_if_creds(token, lvl):
-	temps = ["comprador", "vendedor", "admnistrador"][lvl-1]
+	tipo = ["comprador", "vendedor", "admnistrador"][lvl-1]
 
 	_id = decode(token, key=SECRET, algorithms=["HS256"])["id"]
 
 	con = db_connection()
 	cur = con.cursor()
 
-	cur.execute(f"SELECT * FROM {temps}"+" WHERE utilizador_id=%s", (_id,))
+	cur.execute(f"SELECT * FROM {tipo}"+" WHERE utilizador_id=%s", (_id,))
 	
 	priv = cur.fetchone()
 	if priv is None:
