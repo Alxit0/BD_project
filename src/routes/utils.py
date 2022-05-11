@@ -63,7 +63,7 @@ def check_if_creds(token, lvl):
 
 	con.rollback()
 	con.close()
-	print(priv)
+	# print(priv)
 	return True
 
 

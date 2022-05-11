@@ -22,6 +22,8 @@ CREATE TABLE equipamentos (
 	stock			 INTEGER NOT NULL,
 	nome			 VARCHAR(512),
 	vendedor_utilizador_id BIGINT NOT NULL,
+	prod_code INT,
+	tipo INT NOT NULL,
 	PRIMARY KEY(id)
 );
 
