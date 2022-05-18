@@ -37,14 +37,61 @@ def make_order():
 	con = db_connection()
 	cur = con.cursor()
 
+	total = 0
+	num = 0
+	valores_nao_reconhecidos = []
 	for i in payload["cart"]:
 		try:
-			porduct_id, qunatity = i
+			product_id, quantity = i
 		except TypeError:
 			con.rollback()
 			con.close()
 			return wrong_cart_config_response
-		
-		cur.execute("UPDATE ")
+		temp = get_cur_preco(product_id, cur)
 
-	return "Ola"
+		if temp is None:
+			valores_nao_reconhecidos.append(product_id)
+			continue
+		
+		# print(product_id, temp, quantity)
+		total += temp * quantity
+		num += 1
+
+	if len(valores_nao_reconhecidos) == len(payload["cart"]):
+		print(valores_nao_reconhecidos, num)
+		con.rollback()
+		con.close()
+		return make_response(
+			"api_error",
+			"Nenhum valor reconhecido."
+		)
+
+	cur.execute(
+		"INSERT INTO orders (total, num_orders) VALUES (%s, %s) RETURNING id;",
+		(total, num)
+	)
+	order_id = cur.fetchone()[0]
+	# print(total)
+	con.commit()
+	con.close()
+
+	if valores_nao_reconhecidos:
+		return jsonify({"status": 200, "errors": valores_nao_reconhecidos, "results": order_id})
+	
+	return make_response(
+		"sucess",
+		order_id,
+		message_title="results"
+	)
+
+def get_cur_preco(prod_id, cur):
+	cur.execute(
+		"SELECT preco FROM equipamentos_versions WHERE id = (SELECT cur_version FROM equipamentos WHERE id = %s)",
+		(prod_id,)
+	)
+	data = cur.fetchone()
+	if data is None:
+		return
+	
+	preco = data[0]
+	return preco
