@@ -94,4 +94,7 @@ def verify_header(headers, output=False):
 
 
 def get_id_from_token(token):
+	"""
+	get_id_from_token(request.headers['Authorization'].split()[1])
+	"""
 	return decode(token, key=SECRET, algorithms=["HS256"])["id"]

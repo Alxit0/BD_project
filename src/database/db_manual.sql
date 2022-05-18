@@ -106,10 +106,23 @@ CREATE TABLE ratings (
 	equipamento_id	INT NOT NULL,
 	comprador_id	INT NOT NULL,
 	valor			INT NOT NULL,
+	comment			VARCHAR(150),
 	PRIMARY KEY(equipamento_id, comprador_id)
 );
 
 ALTER TABLE ratings ADD CONSTRAINT ratings_fk1 FOREIGN KEY (equipamento_id) REFERENCES equipamentos(id);
 ALTER TABLE ratings ADD CONSTRAINT ratings_fk2 FOREIGN KEY (comprador_id) REFERENCES comprador(utilizador_id);
+
+CREATE TABLE questions (
+	id				SERIAL UNIQUE,
+	equipamento_id	INT NOT NULL,
+	utilizador_id	INT NOT NULL,
+	question		VARCHAR(150),
+	parent_question	INT
+);
+
+ALTER TABLE questions ADD CONSTRAINT questions_fk1 FOREIGN KEY (equipamento_id) REFERENCES equipamentos(id);
+ALTER TABLE questions ADD CONSTRAINT questions_fk2 FOREIGN KEY (utilizador_id) REFERENCES utilizador(id);
+ALTER TABLE questions ADD CONSTRAINT questions_fk3 FOREIGN KEY (parent_question) REFERENCES questions(id);
 
 \i data.sql

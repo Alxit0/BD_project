@@ -108,18 +108,22 @@ def give_rating(product_id):
 	
 	payload = request.get_json()
 
-	if "valor" not in payload:
-		return make_response(
-			"internal_error",
-			"Missing argument: valor"
-		)
+	checker = check_atributes(payload, "valor", "comment")
+	if checker != []:
+		return make_response("api_error", "Missing atributs: " + ', '.join(checker))
 	
 	valor = payload['valor']
+	comment = payload["comment"]
 
 	if valor < 0 or valor > 5:
 		return make_response(
 			"api_error",
 			"valor must be between 0 and 5 including"
+		)
+	if not (0 < len(comment) < 151):
+		return make_response(
+			"api_error",
+			"comment must contain 150 chars at max"
 		)
 	
 	con = db_connection()
