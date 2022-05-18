@@ -1,2 +1,3 @@
 from .user import user_routes
 from .product import product_routes
+from .unique import unique_routes
