@@ -100,4 +100,16 @@ CREATE TABLE orders (
 	num_orders	INT
 );
 
+
+CREATE TABLE ratings (
+	id				SERIAL UNIQUE,
+	equipamento_id	INT NOT NULL,
+	comprador_id	INT NOT NULL,
+	valor			INT NOT NULL,
+	PRIMARY KEY(equipamento_id, comprador_id)
+);
+
+ALTER TABLE ratings ADD CONSTRAINT ratings_fk1 FOREIGN KEY (equipamento_id) REFERENCES equipamentos(id);
+ALTER TABLE ratings ADD CONSTRAINT ratings_fk2 FOREIGN KEY (comprador_id) REFERENCES comprador(utilizador_id);
+
 \i data.sql

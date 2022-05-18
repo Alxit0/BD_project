@@ -1,4 +1,5 @@
 from flask import Blueprint, request
+from psycopg2 import errors
 
 if __name__ == "__main__":
 	from utils import *
@@ -95,3 +96,57 @@ def get_cur_preco(prod_id, cur):
 	
 	preco = data[0]
 	return preco
+
+@unique_routes.route('/rating/<product_id>', methods=["POST"])
+def give_rating(product_id):
+	# verify credentials
+	if not check_if_creds(request.headers['Authorization'].split()[1], 1):
+		return make_response(
+			"sucess",
+			"Wrong credentials. Must be comprador."
+		)
+	
+	payload = request.get_json()
+
+	if "valor" not in payload:
+		return make_response(
+			"internal_error",
+			"Missing argument: valor"
+		)
+	
+	valor = payload['valor']
+
+	if valor < 0 or valor > 5:
+		return make_response(
+			"api_error",
+			"valor must be between 0 and 5 including"
+		)
+	
+	con = db_connection()
+	cur = con.cursor()
+
+	comprador_id = get_id_from_token(request.headers['Authorization'].split()[1])
+
+	try:
+		cur.execute(
+			"INSERT INTO ratings (equipamento_id, comprador_id, valor) VALUES (%s, %s, %s);",
+			(product_id, comprador_id, valor)
+		)
+	except errors.ForeignKeyViolation:
+		con.rollback()
+		con.close()
+		return make_response(
+			"internal_error",
+			"Product doesnt exist."
+		)
+	except errors.UniqueViolation:
+		con.rollback()
+		con.close()
+		return make_response(
+			"internal_error",
+			"You already gave a rating to dis product."
+		)
+	
+	con.commit()
+	con.close()
+	return jsonify({"status": 200})
