@@ -13,12 +13,20 @@ status_code = {
 
 
 def db_connection():
+	# db = psycopg2.connect(
+	# 	user='postgres',
+	# 	password='postgres',
+	# 	host='127.0.0.1',
+	# 	port='5432',
+	# 	database='proj'
+	# )
+
 	db = psycopg2.connect(
 		user='postgres',
 		password='postgres',
 		host='127.0.0.1',
 		port='5432',
-		database='proj'
+		database='porjtemp'
 	)
 
 	return db
