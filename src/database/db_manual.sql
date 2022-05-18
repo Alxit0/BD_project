@@ -93,4 +93,11 @@ ALTER TABLE computadores ADD CONSTRAINT computadores_fk1 FOREIGN KEY (equipament
 ALTER TABLE televisoes ADD CONSTRAINT televisoes_fk1 FOREIGN KEY (equipamentos_versions_id) REFERENCES equipamentos_versions(id);
 ALTER TABLE smartphones ADD CONSTRAINT smartphones_fk1 FOREIGN KEY (equipamentos_versions_id) REFERENCES equipamentos_versions(id);
 
+
+CREATE TABLE orders (
+	id			SERIAL UNIQUE,
+	total		FLOAT(8),
+	num_orders	INT
+);
+
 \i data.sql
