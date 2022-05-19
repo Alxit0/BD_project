@@ -133,8 +133,8 @@ def give_rating(product_id):
 
 	try:
 		cur.execute(
-			"INSERT INTO ratings (equipamento_id, comprador_id, valor) VALUES (%s, %s, %s);",
-			(product_id, comprador_id, valor)
+			"INSERT INTO ratings (equipamento_id, comprador_id, valor, comment) VALUES (%s, %s, %s, %s);",
+			(product_id, comprador_id, valor, comment)
 		)
 	except errors.ForeignKeyViolation:
 		con.rollback()
