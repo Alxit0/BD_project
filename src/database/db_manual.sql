@@ -7,6 +7,9 @@ DROP TABLE equipamentos_versions CASCADE;
 DROP TABLE computadores CASCADE;
 DROP TABLE televisoes CASCADE;
 DROP TABLE smartphones CASCADE;
+DROP TABLE orders CASCADE;
+DROP TABLE ratings CASCADE;
+DROP TABLE questions CASCADE;
 
 CREATE TABLE utilizador (
 	id			SERIAL UNIQUE,
@@ -37,7 +40,7 @@ CREATE TABLE comprador (
 
 CREATE TABLE equipamentos (
 	id						SERIAL,
-	stock					INT NOT NULL,
+	stock					INT NOT NULL CHECK (stock > -1),
 	vendedor_utilizador_id	BIGINT NOT NULL,
 	tipo					INT NOT NULL,
 	cur_version				INT NOT NULL,

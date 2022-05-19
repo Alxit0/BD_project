@@ -41,6 +41,7 @@ def make_order():
 	total = 0
 	num = 0
 	valores_nao_reconhecidos = []
+	quantidade_insuficiente = []
 	for i in payload["cart"]:
 		try:
 			product_id, quantity = i
@@ -50,21 +51,39 @@ def make_order():
 			return wrong_cart_config_response
 		temp = get_cur_preco(product_id, cur)
 
+		try:
+			cur.execute(
+				"BEGIN TRANSACTION;UPDATE equipamentos SET stock = stock - %s WHERE id = %s;",
+				(quantity, product_id)
+			)
+		except errors.CheckViolation:
+			cur.execute("ROLLBACK;")
+			quantidade_insuficiente.append(product_id)
+			continue
+		
+		cur.execute("COMMIT;")
 		if temp is None:
 			valores_nao_reconhecidos.append(product_id)
 			continue
-		
+	
 		# print(product_id, temp, quantity)
 		total += temp * quantity
 		num += 1
 
 	if len(valores_nao_reconhecidos) == len(payload["cart"]):
-		print(valores_nao_reconhecidos, num)
+		# print(valores_nao_reconhecidos, num)
 		con.rollback()
 		con.close()
 		return make_response(
 			"api_error",
 			"Nenhum valor reconhecido."
+		)
+	if len(quantidade_insuficiente) == len(payload['cart']):
+		con.rollback()
+		con.close()
+		return make_response(
+			"api_error",
+			"Nenhuma quantidade suficiente."
 		)
 
 	cur.execute(
@@ -76,8 +95,15 @@ def make_order():
 	con.commit()
 	con.close()
 
+	temp_erros = {"errors": {}}
 	if valores_nao_reconhecidos:
-		return jsonify({"status": 200, "errors": valores_nao_reconhecidos, "results": order_id})
+		temp_erros["errors"]['Produto nao existe'] = valores_nao_reconhecidos
+		# return jsonify({"status": 200, "errors": valores_nao_reconhecidos, "results": order_id})
+	if quantidade_insuficiente:
+		temp_erros["errors"]["Quantidades insuficientes"] = quantidade_insuficiente
+
+	if temp_erros['errors']:
+		return jsonify({**temp_erros, "status": 200, "results": order_id})
 	
 	return make_response(
 		"sucess",
@@ -91,6 +117,7 @@ def get_cur_preco(prod_id, cur):
 		(prod_id,)
 	)
 	data = cur.fetchone()
+
 	if data is None:
 		return
 	
