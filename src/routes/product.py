@@ -1,4 +1,3 @@
-from unicodedata import name
 from flask import Blueprint, request
 from psycopg2 import errors
 
@@ -73,9 +72,9 @@ def update_product(prod_id):
 
 	cur.execute(
 		"INSERT INTO equipamentos_versions (" +
-		', '.join(basic_produt_atributes+["equipamentos_main"]) +
-		") VALUES (%s" + ", %s"*len(basic_produt_atributes) + ") RETURNING id;",
-		tuple(map(d.__getitem__, basic_produt_atributes+["equipamentos_main"]))
+		', '.join(basic_produt_atributes+["equipamentos_main", "data_mod"]) +
+		") VALUES (%s, %s" + ", %s"*len(basic_produt_atributes) + ") RETURNING id;",
+		tuple(map(d.__getitem__, basic_produt_atributes+["equipamentos_main"])) + (get_cur_date(),)
 	)
 
 	version_id = cur.fetchone()[0]
@@ -98,6 +97,22 @@ def update_product(prod_id):
 	
 	return jsonify({"status": 200})
 
+@product_routes.route("/<prod_id>", methods=["GET"])
+def consultar_prod_info(prod_id):
+	con = db_connection()
+	cur = con.cursor()
+
+	cur.execute(
+		"SELECT (SELECT ARRAY_AGG(preco) FROM equipamentos_versions WHERE equipamentos_main = prod.id)," +
+		"(SELECT ARRAY_AGG((valor, comment)::int_str) FROM ratings WHERE equipamento_id = prod.id) FROM" + 
+		" equipamentos as prod WHERE prod.id = 1;",
+		(prod_id, )
+	)
+	res = cur.fetchone()[1]
+	print(res)
+	print(list(map(eval, eval(f"[{res[1:-1]}]"))))
+	
+	return "OLA"
 
 def create_product_helper(payload:dict, vendedor_id):
 	# check if has 'type'
@@ -147,9 +162,9 @@ def create_product_helper(payload:dict, vendedor_id):
 
 	cur.execute(
 		"INSERT INTO equipamentos_versions (" +
-		', '.join(basic_produt_atributes) +
-		") VALUES (%s" + ", %s"*(len(basic_produt_atributes) - 1) + ") RETURNING id;",
-		tuple(map(payload.__getitem__, basic_produt_atributes))
+		', '.join(basic_produt_atributes + ["data_mod"]) +
+		") VALUES (%s, %s" + ", %s"*(len(basic_produt_atributes) - 1) + ") RETURNING id;",
+		tuple(map(payload.__getitem__, basic_produt_atributes)) + (get_cur_date(),)
 	)
 
 	version_id = cur.fetchone()[0]

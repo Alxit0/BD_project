@@ -53,6 +53,7 @@ CREATE TABLE equipamentos_versions (
 	descricao				VARCHAR(512) NOT NULL,
 	nome					VARCHAR(512),
 	equipamentos_main		INT,
+	data_mod				DATE,
 	PRIMARY KEY(id)
 );
 
