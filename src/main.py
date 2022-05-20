@@ -1,5 +1,5 @@
 from flask import Flask, Blueprint
-from routes import user_routes, product_routes, unique_routes, questions_routes
+from routes import user_routes, product_routes, unique_routes, questions_routes, report_route
 
 app = Flask(__name__)
 
@@ -12,7 +12,7 @@ app_routes.register_blueprint(questions_routes, url_prefix="/questions")
 
 
 app.register_blueprint(app_routes, url_prefix="/dbproject")
-
+app.register_blueprint(report_route)
 
 if __name__ == '__main__':
 	host = '127.0.0.1'

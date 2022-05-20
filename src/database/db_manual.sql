@@ -11,6 +11,8 @@ DROP TABLE orders CASCADE;
 DROP TABLE ratings CASCADE;
 DROP TABLE questions CASCADE;
 
+create type int_str as (f1 int, f2 text);
+
 CREATE TABLE utilizador (
 	id			SERIAL UNIQUE,
 	email		VARCHAR(50) NOT NULL,
@@ -101,7 +103,8 @@ ALTER TABLE smartphones ADD CONSTRAINT smartphones_fk1 FOREIGN KEY (equipamentos
 CREATE TABLE orders (
 	id			SERIAL UNIQUE,
 	total		FLOAT(8),
-	num_orders	INT
+	num_orders	INT,
+	_date		VARCHAR(10)
 );
 
 

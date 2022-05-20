@@ -103,3 +103,8 @@ def get_id_from_token(token):
 def get_cur_date():
 	# return "2022-05-20"
 	return str(date.today())
+
+def get_cur_month():
+	today = date.today()
+	return "2022-05"
+	# return f"{today.year}-{str(today.month).zfill(2)}"
