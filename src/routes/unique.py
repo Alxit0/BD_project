@@ -87,8 +87,8 @@ def make_order():
 		)
 
 	cur.execute(
-		"INSERT INTO orders (total, num_orders, _date) VALUES (%s, %s, %s) RETURNING id;",
-		(total, num, get_cur_month())
+		"INSERT INTO orders (total, num_orders, _date, comprador_id) VALUES (%s, %s, %s, %s) RETURNING id;",
+		(total, num, get_cur_month(), get_id_from_token(request.headers['Authorization'].split()[1]))
 	)
 	order_id = cur.fetchone()[0]
 	# print(total)
