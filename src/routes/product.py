@@ -8,7 +8,8 @@ else:
 
 
 product_routes = Blueprint("product_routes", __name__)
-basic_produt_atributes = ["preco", "descricao", "stock", "nome"]
+basic_produt_atributes = ["preco", "descricao", "nome"]
+types_of_prods = ['computadores', 'televisoes', 'smartphones']
 product_atributes = {
 	'computadores': [1, ["processador", "placa_vidio", "ram", "storage"]],
 	'televisoes': [2, ["tamanho", "resolucao", "refresh_rt"]],
@@ -35,12 +36,6 @@ def create_product():
 
 @product_routes.route("/<prod_id>", methods=["PUT"])
 def update_product(prod_id):
-	"""
-	Tens de adicionar um novo produto no final
-	UPDATE informacao na tabela de equipamentos retornando o id e o tipo
-
-	Ir a tabela desse tipo e UPADTE a informacao especifica
-	"""
 	# verify credentials
 	if not check_if_creds(request.headers['Authorization'].split()[1], 2):
 		return make_response(
@@ -48,35 +43,141 @@ def update_product(prod_id):
 			"Wrong credentials. Must be vendedor."
 		)
 	
-	d, vendedor_id, tipo, code = fetch_info_product(prod_id)
+	payload:dict = request.get_json()
 
-	payload = request.get_json()
+	if len(payload) == 0:
+		return make_response(
+			"sucess",
+			"No atributs changed"
+		)
+	
+	con = db_connection()
+	cur = con.cursor()
+
+	if 'stock' in payload:
+		cur.execute(
+			"UPDATE equipamentos SET stock = %s WHERE id=%s;",
+			(payload.pop('stock'), prod_id)
+		)
+		if len(payload) == 0:
+			con.commit()
+			con.close()
+			return jsonify({"status": 200})
+	
+	d, nome_of_type = fetch_info_product(prod_id, cur)
+	to_abort = True
+	# print(d)
 	for i in payload:
 		if i in d:
-			d[i] = payload[i]
+			# print('ola')
+			to_abort = False
+		d[i] = payload[i]
+	# print(d)
 
-	create_product_helper({**d, "type": tipo}, vendedor_id, prod_code=code)
+	cur.execute(
+		"BEGIN TRANSACTION;" +
+		"INSERT INTO equipamentos_versions (" +
+		', '.join(basic_produt_atributes+["equipamentos_main", "data_mod"]) +
+		") VALUES (%s, %s" + ", %s"*len(basic_produt_atributes) + ") RETURNING id;",
+		tuple(map(d.__getitem__, basic_produt_atributes+["equipamentos_main"])) + (get_cur_date(),)
+	)
+
+	version_id = cur.fetchone()[0]
+	_, atrs_tipo = product_atributes[nome_of_type]
+
+	if to_abort:
+		cur.execute("ROLLBACK;")
+		con.rollback()
+		con.close()
+		return make_response(
+			"api_error",
+			f"No values aceptable. ({', '.join(basic_produt_atributes+atrs_tipo)})"
+		)
+	cur.execute(
+		
+		f"INSERT INTO {nome_of_type} (" +
+		', '.join(atrs_tipo+["equipamentos_versions_id"]) +
+		") VALUES (%s" + ", %s"*len(atrs_tipo) + ");",
+		tuple(map(d.__getitem__, atrs_tipo)) + (version_id, )
+	)
+
+	cur.execute(
+			"UPDATE equipamentos SET cur_version = %s WHERE id=%s;",
+			(version_id, prod_id)
+		)
+	cur.execute("COMMIT;")
+	con.commit()
+	con.close()
+	
 	return jsonify({"status": 200})
 
+@product_routes.route("/<prod_id>", methods=["GET"])
+def consultar_prod_info(prod_id):
+	con = db_connection()
+	cur = con.cursor()
 
-def create_product_helper(payload:dict, vendedor_id, *, prod_code=None):
+	cur.execute(
+		"SELECT (SELECT ARRAY_AGG((preco, data_mod)::int_str) FROM equipamentos_versions WHERE equipamentos_main = prod.id)," +
+		"(SELECT ARRAY_AGG((valor, comment)::int_str) FROM ratings WHERE equipamento_id = prod.id), " +
+		"(SELECT descricao FROM equipamentos_versions WHERE equipamentos_main = prod.id ORDER BY descricao DESC LIMIT 1)" + 
+		" FROM equipamentos as prod WHERE prod.id = 1;",
+		(prod_id, )
+	)
+	res = cur.fetchone()
+	y = lambda x: eval(x.replace(',', ',\"').replace(')', '\")'))
+	# print(*map(y, eval(res[0])))
+	# print(list(map(eval, eval(f"[{res[1][1:-1]}]"))))
+	
+	description = res[2]
+	soma = 0
+	comentarios = []
+	numero = 0
+	for i, j in map(eval, eval(f"[{res[1][1:-1]}]")):
+		soma += i
+		comentarios.append(j)
+		numero += 1
+	
+	precos_temp = sorted(map(y, eval(res[0])), key=lambda x:x[1])
+	precos_final = [precos_temp[0]]
+	for i in range(1, len(precos_temp)):
+		if precos_temp[i - 1][0] == precos_temp[i][0]:
+			continue
+		precos_final.append(precos_temp[i])
+	print(precos_final)
+	return make_response(
+		"sucess",
+		{
+			'description': description,
+			'prices': [f"{j} - {i}"for i, j in precos_final],
+			'rating': soma/numero,
+			'comentarios': comentarios
+		},
+		message_title="results"
+	)
+
+def create_product_helper(payload:dict, vendedor_id):
 	# check if has 'type'
 	if 'type' not in payload:
 		return make_response(
 			"api_error",
-			"Tipo ('type') de utilizador nao especificado (computadores | televisoes | smartphones)",
+			"Tipo ('type') de produto nao especificado (computadores | televisoes | smartphones)",
 			message_title="error"
 		)
-	
+	if payload['type'] not in product_atributes:
+		return make_response(
+			"api_error",
+			"Tipo ('type') de produto nao reconhecido. Tipos Aceites: (computadores | televisoes | smartphones)",
+			message_title="error"
+		)
 	# check if has all the needed atributes
-	checker = check_atributes(payload, *basic_produt_atributes + product_atributes[payload['type']][1])
+	checker = check_atributes(payload, *['stock'] + basic_produt_atributes + product_atributes[payload['type']][1])
 	if checker != []:
 		return make_response("api_error", "Missing atributs: " + ', '.join(checker))
 	
 	con = db_connection()
 	cur = con.cursor()
 	num_tipo, atrs_tipo = product_atributes[payload['type']]
-	try:
+	"""try:
 		cur.execute(
 			"INSERT INTO equipamentos (" +
 			', '.join(basic_produt_atributes+["vendedor_utilizador_id", "tipo"]) +
@@ -103,6 +204,36 @@ def create_product_helper(payload:dict, vendedor_id, *, prod_code=None):
 		', '.join(atrs_tipo+["equipamentos_id"]) +
 		") VALUES (%s" + ", %s"*len(atrs_tipo) + ");",
 		tuple(map(payload.__getitem__, atrs_tipo)) + (prod_id, )
+	)"""
+
+	cur.execute(
+		"INSERT INTO equipamentos_versions (" +
+		', '.join(basic_produt_atributes + ["data_mod"]) +
+		") VALUES (%s, %s" + ", %s"*(len(basic_produt_atributes) - 1) + ") RETURNING id;",
+		tuple(map(payload.__getitem__, basic_produt_atributes)) + (get_cur_date(),)
+	)
+
+	version_id = cur.fetchone()[0]
+	
+	cur.execute(
+		"INSERT INTO equipamentos (stock, vendedor_utilizador_id, tipo, cur_version) " +
+		"VALUES (%s, %s, %s, %s) RETURNING id;",
+		(payload['stock'], vendedor_id, num_tipo, version_id)
+	)
+
+	prod_id = cur.fetchone()[0]
+	
+	cur.execute(
+		"UPDATE equipamentos_versions SET equipamentos_main = %s WHERE id = %s",
+		(prod_id, version_id)
+	)
+
+	cur.execute(
+		
+		f"INSERT INTO {payload['type']} (" +
+		', '.join(atrs_tipo+["equipamentos_versions_id"]) +
+		") VALUES (%s" + ", %s"*len(atrs_tipo) + ");",
+		tuple(map(payload.__getitem__, atrs_tipo)) + (version_id, )
 	)
 
 	con.commit()
@@ -114,33 +245,31 @@ def create_product_helper(payload:dict, vendedor_id, *, prod_code=None):
 		message_title="results"
 	)
 
-def fetch_info_product(prod_id):
-	con = db_connection()
-	cur = con.cursor()
+def fetch_info_product(prod_id, cur):
 
 	cur.execute(
-		"SELECT " + ', '.join(basic_produt_atributes+["tipo", "vendedor_utilizador_id", "prod_code"]) + 
-		" FROM equipamentos WHERE id=%s;",
-		prod_id
+		"SELECT cur_version, tipo FROM equipamentos WHERE id = %s;",
+		(prod_id,)
 	)
-	# print(cur.fetchone())
-	*temp_atrs, tipo_num, vendedor_id, prod_code = cur.fetchone()
+
+	version_id, tipo = cur.fetchone()
 	d = {}
-	for i, j in zip(basic_produt_atributes, temp_atrs):
+
+	cur.execute(
+		"SELECT " + ', '.join(basic_produt_atributes+["equipamentos_main"]) + " FROM equipamentos_versions WHERE id = %s;",
+		(version_id,)
+	)
+	for i, j in zip(basic_produt_atributes+["equipamentos_main"], cur.fetchone()):
+		d[i] = j
+
+	nome_of_type = types_of_prods[tipo - 1]
+	cur.execute(
+		"SELECT " + ', '.join(product_atributes[nome_of_type][1])+ f" FROM {nome_of_type} "+
+		"WHERE equipamentos_versions_id = %s;",
+		(version_id,)
+	)
+	for i, j in zip(product_atributes[nome_of_type][1], cur.fetchone()):
 		d[i] = j
 	
-	tipo_str = list(product_atributes.keys())[tipo_num - 1]
-	print(tipo_str)
+	return d, nome_of_type
 
-	cur.execute(
-		"SELECT " + ', '.join(product_atributes[tipo_str][1]) +
-		f" FROM {tipo_str}" + " WHERE equipamentos_id=%s;",
-		prod_id
-	)
-	for i, j in zip(product_atributes[tipo_str][1], cur.fetchone()):
-		d[i] = j
-
-	con.commit()
-	con.close()
-
-	return d, vendedor_id, tipo_str, prod_code

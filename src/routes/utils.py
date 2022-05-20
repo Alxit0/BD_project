@@ -2,6 +2,7 @@ from flask import jsonify
 import psycopg2
 from datetime import datetime, timedelta
 from jwt import encode, decode, exceptions
+from datetime import date
 
 SECRET = "Hello World"
 
@@ -13,12 +14,20 @@ status_code = {
 
 
 def db_connection():
+	# db = psycopg2.connect(
+	# 	user='postgres',
+	# 	password='postgres',
+	# 	host='127.0.0.1',
+	# 	port='8000',
+	# 	database='proj'
+	# )
+
 	db = psycopg2.connect(
-		user='postgres',
-		password='postgres',
+		user='rest_api',
+		password='ola',
 		host='127.0.0.1',
 		port='5432',
-		database='proj'
+		database='online_shop'
 	)
 
 	return db
@@ -68,11 +77,12 @@ def check_if_creds(token, lvl):
 
 
 def verify_header(headers, output=False):
-	if 'Authorization' not in headers.keys():
+	if 'Authorization' not in headers.keys() or len(headers['Authorization'].split()) == 1:
 		return make_response(
 			"api_error",
 			"Not logged in (no token passed). Please log in."
 		)
+	# print(headers['Authorization'])
 	token = headers['Authorization'].split()[1]
 	try:
 		if output:
@@ -86,4 +96,22 @@ def verify_header(headers, output=False):
 
 
 def get_id_from_token(token):
+	"""
+	get_id_from_token(request.headers['Authorization'].split()[1])
+	"""
 	return decode(token, key=SECRET, algorithms=["HS256"])["id"]
+
+def get_cur_date():
+	# return "2022-05-20"
+	return str(date.today())
+
+def get_cur_month():
+	today = date.today()
+	return "2022-05"
+	# return f"{today.year}-{str(today.month).zfill(2)}"
+
+def get_expire_date(data, days):
+	return date(*map(int, data.split('-'))) + timedelta(days)
+
+def to_date(data):
+	return date(*map(int, data.split('-')))
