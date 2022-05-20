@@ -7,6 +7,7 @@ else:
 	from .utils import *
 
 unique_routes = Blueprint("unique_routes", __name__)
+campanha_atrs = ["descricao", "date_start", "date_end", "coupons", "dicount", "validade_cupao_dias"]
 
 @unique_routes.before_request
 def verify_token():
@@ -181,3 +182,88 @@ def give_rating(product_id):
 	con.commit()
 	con.close()
 	return jsonify({"status": 200})
+
+@unique_routes.route('/campaign', methods=["POST"])
+def create_campaign():
+	if not check_if_creds(request.headers['Authorization'].split()[1], 3):
+		return make_response(
+			"api_error",
+			"Not enough privileges. Please log in with and admin acount."
+		)
+	
+	payload: dict = request.get_json()
+
+	checker = check_atributes(payload, *campanha_atrs)
+	if checker != []:
+		return make_response("api_error", "Missing atributs: " + ', '.join(checker))
+	
+	if to_date(payload["date_start"]) > to_date(payload["date_end"]):
+			return make_response(
+				"internal_error",
+				"Start date < End date"
+			)
+	con = db_connection()
+	cur = con.cursor()
+
+	cur.execute(
+		"SELECT id FROM campanha WHERE (date_start < %s AND %s < date_end) OR (date_start < %s AND %s < date_end)",
+		(payload["date_start"], payload["date_start"], payload["date_end"], payload["date_end"])
+	)
+	if len(cur.fetchall())!= 0:
+		return make_response(
+			"api_error",
+			"Campanha subreposta com outra"
+		)
+	cur.execute(
+		f"INSERT INTO campanha ({', '.join(campanha_atrs + ['cupoes_generated'])}) VALUES (" + 
+		"%s, "*(len(campanha_atrs)) + "%s) RETURNING id;",
+		tuple(map(payload.__getitem__, campanha_atrs)) + (payload['coupons'],)
+	)
+	########################
+	camp_id = cur.fetchone()[0]
+	
+	con.commit()
+	con.close()
+	return make_response(
+		"sucess",
+		camp_id,
+		message_title="results"
+	)
+
+@unique_routes.route('/subscribe/<campaign_id>', methods=["PUT"])
+def subscribe_acmp(campaign_id):
+	if not check_if_creds(request.headers['Authorization'].split()[1], 1):
+		return make_response(
+			"api_error",
+			"Not enough privileges. Please log in with and admin acount."
+		)
+	con = db_connection()
+	cur = con.cursor()
+
+	try:
+		cur.execute(
+			"UPDATE campanha SET coupons = coupons - 1 WHERE id = %s RETURNING date_start, date_end",
+			(campaign_id, )
+		)
+		start, end = cur.fetchone()
+		if not (start < date.today() <= end):
+			return make_response(
+				"sucess",
+				f"Campaign fora do prazo: {start} ate {end}"
+			)
+		cur.execute(
+			"INSERT INTO cupoes (campanha_id, comprador_id) VALUES (%s, %s)",
+			(campaign_id, get_id_from_token(request.headers['Authorization'].split()[1]))
+		)
+
+	except errors.UniqueViolation:
+		con.rollback()
+		con.close()
+		return make_response(
+			"sucess",
+			"You have already subscribed in this campign."
+		)
+	return make_response(
+		"sucess",
+		{"campaign_id": campaign_id, "expiration_date": get_expire_date(get_cur_date(), 1)}
+	)

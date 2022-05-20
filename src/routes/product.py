@@ -160,10 +160,15 @@ def create_product_helper(payload:dict, vendedor_id):
 	if 'type' not in payload:
 		return make_response(
 			"api_error",
-			"Tipo ('type') de utilizador nao especificado (computadores | televisoes | smartphones)",
+			"Tipo ('type') de produto nao especificado (computadores | televisoes | smartphones)",
 			message_title="error"
 		)
-	
+	if payload['type'] not in product_atributes:
+		return make_response(
+			"api_error",
+			"Tipo ('type') de produto nao reconhecido. Tipos Aceites: (computadores | televisoes | smartphones)",
+			message_title="error"
+		)
 	# check if has all the needed atributes
 	checker = check_atributes(payload, *['stock'] + basic_produt_atributes + product_atributes[payload['type']][1])
 	if checker != []:

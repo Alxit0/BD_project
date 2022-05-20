@@ -45,12 +45,11 @@ def add_user():
 		return add_user_helper(payload, "comprador")
 	
 	# check if as header
-	if 'Authorization' not in request.headers.keys():
+	if 'Authorization' not in request.headers.keys() or request.headers['Authorization'].split()[1] == 'undefined':
 		return make_response(
 			"api_error",
 			"Not logged in (no token passed). Please log in with and admin acount."
 		)
-	
 	# check if as enough privileges
 	if not check_if_creds(request.headers['Authorization'].split()[1], 3):
 		return make_response(

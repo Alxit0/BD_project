@@ -23,11 +23,11 @@ def db_connection():
 	# )
 
 	db = psycopg2.connect(
-		user='postgres',
-		password='postgres',
+		user='rest_api',
+		password='ola',
 		host='127.0.0.1',
 		port='5432',
-		database='porjtemp'
+		database='online_shop'
 	)
 
 	return db
@@ -77,11 +77,12 @@ def check_if_creds(token, lvl):
 
 
 def verify_header(headers, output=False):
-	if 'Authorization' not in headers.keys():
+	if 'Authorization' not in headers.keys() or len(headers['Authorization'].split()) == 1:
 		return make_response(
 			"api_error",
 			"Not logged in (no token passed). Please log in."
 		)
+	# print(headers['Authorization'])
 	token = headers['Authorization'].split()[1]
 	try:
 		if output:
@@ -108,3 +109,9 @@ def get_cur_month():
 	today = date.today()
 	return "2022-05"
 	# return f"{today.year}-{str(today.month).zfill(2)}"
+
+def get_expire_date(data, days):
+	return date(*map(int, data.split('-'))) + timedelta(days)
+
+def to_date(data):
+	return date(*map(int, data.split('-')))

@@ -1,3 +1,10 @@
+DROP DATABASE online_shop;
+DROP ROLE rest_api;
+CREATE DATABASE online_shop;
+CREATE USER rest_api WITH SUPERUSER PASSWORD 'ola';
+GRANT ALL PRIVILEGES ON DATABASE online_shop TO rest_api;
+\c online_shop;
+
 DROP TABLE comprador CASCADE;
 DROP TABLE admnistrador CASCADE;
 DROP TABLE vendedor CASCADE;
@@ -92,7 +99,8 @@ CREATE TABLE orders (
 	comprador_id	INT NOT NULL,
 	total			FLOAT(8),
 	num_orders		INT,
-	_date			VARCHAR(10)
+	_date			VARCHAR(10),
+	PRIMARY KEY(id)
 );
 
 CREATE TABLE ratings (
@@ -109,14 +117,34 @@ CREATE TABLE questions (
 	equipamento_id	INT NOT NULL,
 	utilizador_id	INT NOT NULL,
 	question		VARCHAR(150),
-	parent_question	INT
+	parent_question	INT,
+	PRIMARY KEY(id)
 );
 
 CREATE TABLE notificacoes (
 	id				SERIAL UNIQUE,
 	utilizador_id	INT NOT NULL,
 	title		VARCHAR(50),
-	descricao		VARCHAR(150)
+	descricao		VARCHAR(150),
+	PRIMARY KEY(id)
+);
+
+CREATE TABLE campanha (
+	id					SERIAL UNIQUE,
+	descricao			VARCHAR(100) NOT NULL,
+	date_start			DATE NOT NULL,
+	date_end			DATE NOT NULL,
+	coupons				INT NOT NULL,
+	dicount				INT NOT NULL,
+	validade_cupao_dias	INT NOT NULL,
+	cupoes_generated	INT NOT NULL,
+	PRIMARY KEY(id)
+);
+
+CREATE TABLE cupoes (
+	campanha_id		INT NOT NULL,
+	comprador_id	INT NOT NULL,
+	PRIMARY KEY(campanha_id, comprador_id)
 );
 
 ALTER TABLE admnistrador ADD CONSTRAINT admnistrador_fk1 FOREIGN KEY (utilizador_id) REFERENCES utilizador(id);
@@ -135,6 +163,8 @@ ALTER TABLE questions ADD CONSTRAINT questions_fk1 FOREIGN KEY (equipamento_id) 
 ALTER TABLE questions ADD CONSTRAINT questions_fk2 FOREIGN KEY (utilizador_id) REFERENCES utilizador(id);
 ALTER TABLE questions ADD CONSTRAINT questions_fk3 FOREIGN KEY (parent_question) REFERENCES questions(id);
 ALTER TABLE notificacoes ADD CONSTRAINT notificacoes_fk1 FOREIGN KEY (utilizador_id) REFERENCES utilizador(id);
+ALTER TABLE cupoes ADD CONSTRAINT cupoes_fk1 FOREIGN KEY (campanha_id) REFERENCES campanha(id);
+ALTER TABLE cupoes ADD CONSTRAINT cupoes_fk2 FOREIGN KEY (comprador_id) REFERENCES comprador(id);
 
 
 -- trigers
@@ -211,4 +241,5 @@ CREATE OR REPLACE TRIGGER compra_allert
 ;
 
 -- Data
-\i data.sql
+INSERT INTO utilizador (email, username, privileges, password) VALUES ('admin@gmail.com', 'admin1', 3, 'admin');
+INSERT INTO admnistrador (utilizador_id) VALUES (1);
