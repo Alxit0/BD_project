@@ -65,12 +65,17 @@ def update_product(prod_id):
 			return jsonify({"status": 200})
 	
 	d, nome_of_type = fetch_info_product(prod_id, cur)
+	to_abort = True
 	# print(d)
 	for i in payload:
+		if i in d:
+			# print('ola')
+			to_abort = False
 		d[i] = payload[i]
 	# print(d)
 
 	cur.execute(
+		"BEGIN TRANSACTION;" +
 		"INSERT INTO equipamentos_versions (" +
 		', '.join(basic_produt_atributes+["equipamentos_main", "data_mod"]) +
 		") VALUES (%s, %s" + ", %s"*len(basic_produt_atributes) + ") RETURNING id;",
@@ -79,6 +84,15 @@ def update_product(prod_id):
 
 	version_id = cur.fetchone()[0]
 	_, atrs_tipo = product_atributes[nome_of_type]
+
+	if to_abort:
+		cur.execute("ROLLBACK;")
+		con.rollback()
+		con.close()
+		return make_response(
+			"api_error",
+			f"No values aceptable. ({', '.join(basic_produt_atributes+atrs_tipo)})"
+		)
 	cur.execute(
 		
 		f"INSERT INTO {nome_of_type} (" +
@@ -91,7 +105,7 @@ def update_product(prod_id):
 			"UPDATE equipamentos SET cur_version = %s WHERE id=%s;",
 			(version_id, prod_id)
 		)
-
+	cur.execute("COMMIT;")
 	con.commit()
 	con.close()
 	
@@ -103,16 +117,43 @@ def consultar_prod_info(prod_id):
 	cur = con.cursor()
 
 	cur.execute(
-		"SELECT (SELECT ARRAY_AGG(preco) FROM equipamentos_versions WHERE equipamentos_main = prod.id)," +
-		"(SELECT ARRAY_AGG((valor, comment)::int_str) FROM ratings WHERE equipamento_id = prod.id) FROM" + 
-		" equipamentos as prod WHERE prod.id = 1;",
+		"SELECT (SELECT ARRAY_AGG((preco, data_mod)::int_str) FROM equipamentos_versions WHERE equipamentos_main = prod.id)," +
+		"(SELECT ARRAY_AGG((valor, comment)::int_str) FROM ratings WHERE equipamento_id = prod.id), " +
+		"(SELECT descricao FROM equipamentos_versions WHERE equipamentos_main = prod.id ORDER BY descricao DESC LIMIT 1)" + 
+		" FROM equipamentos as prod WHERE prod.id = 1;",
 		(prod_id, )
 	)
-	res = cur.fetchone()[1]
-	print(res)
-	print(list(map(eval, eval(f"[{res[1:-1]}]"))))
+	res = cur.fetchone()
+	y = lambda x: eval(x.replace(',', ',\"').replace(')', '\")'))
+	# print(*map(y, eval(res[0])))
+	# print(list(map(eval, eval(f"[{res[1][1:-1]}]"))))
 	
-	return "OLA"
+	description = res[2]
+	soma = 0
+	comentarios = []
+	numero = 0
+	for i, j in map(eval, eval(f"[{res[1][1:-1]}]")):
+		soma += i
+		comentarios.append(j)
+		numero += 1
+	
+	precos_temp = sorted(map(y, eval(res[0])), key=lambda x:x[1])
+	precos_final = [precos_temp[0]]
+	for i in range(1, len(precos_temp)):
+		if precos_temp[i - 1][0] == precos_temp[i][0]:
+			continue
+		precos_final.append(precos_temp[i])
+	print(precos_final)
+	return make_response(
+		"sucess",
+		{
+			'description': description,
+			'prices': [f"{j} - {i}"for i, j in precos_final],
+			'rating': soma/numero,
+			'comentarios': comentarios
+		},
+		message_title="results"
+	)
 
 def create_product_helper(payload:dict, vendedor_id):
 	# check if has 'type'

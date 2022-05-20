@@ -101,5 +101,5 @@ def get_id_from_token(token):
 	return decode(token, key=SECRET, algorithms=["HS256"])["id"]
 
 def get_cur_date():
-	return "2022-05-20"
+	# return "2022-05-20"
 	return str(date.today())
