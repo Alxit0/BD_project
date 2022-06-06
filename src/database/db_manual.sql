@@ -243,7 +243,3 @@ CREATE OR REPLACE TRIGGER compra_allert
 -- Data
 INSERT INTO utilizador (email, username, privileges, password) VALUES ('admin@gmail.com', 'admin1', 3, 'admin');
 INSERT INTO admnistrador (utilizador_id) VALUES (1);
-
-
-
-
