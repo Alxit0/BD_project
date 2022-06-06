@@ -120,7 +120,7 @@ def consultar_prod_info(prod_id):
 		"SELECT (SELECT ARRAY_AGG((preco, data_mod)::int_str) FROM equipamentos_versions WHERE equipamentos_main = prod.id)," +
 		"(SELECT ARRAY_AGG((valor, comment)::int_str) FROM ratings WHERE equipamento_id = prod.id), " +
 		"(SELECT descricao FROM equipamentos_versions WHERE equipamentos_main = prod.id ORDER BY descricao DESC LIMIT 1)" + 
-		" FROM equipamentos as prod WHERE prod.id = 1;",
+		" FROM equipamentos as prod WHERE prod.id = %s;",
 		(prod_id, )
 	)
 	res = cur.fetchone()

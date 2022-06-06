@@ -205,15 +205,18 @@ def create_campaign():
 	con = db_connection()
 	cur = con.cursor()
 
+	start, end = payload["date_start"], payload["date_end"]
 	cur.execute(
-		"SELECT id FROM campanha WHERE (date_start < %s AND %s < date_end) OR (date_start < %s AND %s < date_end)",
-		(payload["date_start"], payload["date_start"], payload["date_end"], payload["date_end"])
+		"SELECT id FROM campanha WHERE\
+		(%s <= date_end AND %s >= date_start);",
+		(start, end)
 	)
 	if len(cur.fetchall())!= 0:
 		return make_response(
 			"api_error",
 			"Campanha subreposta com outra"
 		)
+
 	cur.execute(
 		f"INSERT INTO campanha ({', '.join(campanha_atrs + ['cupoes_generated'])}) VALUES (" + 
 		"%s, "*(len(campanha_atrs)) + "%s) RETURNING id;",

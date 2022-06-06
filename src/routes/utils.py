@@ -107,8 +107,8 @@ def get_cur_date():
 
 def get_cur_month():
 	today = date.today()
-	return "2022-05"
-	# return f"{today.year}-{str(today.month).zfill(2)}"
+	# return "2022-05"
+	return f"{today.year}-{str(today.month).zfill(2)}"
 
 def get_expire_date(data, days):
 	return date(*map(int, data.split('-'))) + timedelta(days)
