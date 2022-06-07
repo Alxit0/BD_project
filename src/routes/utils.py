@@ -50,7 +50,7 @@ def check_atributes(payload:dict, *atributes):
 
 
 def write_token(data:dict):
-	expier_date = lambda time: datetime.now() + timedelta(minutes=time)
+	expier_date = lambda time: datetime.now() + timedelta(days=time)
 	
 	token = encode(payload={**data, "exp": expier_date(30)}, key=SECRET, algorithm="HS256")
 	return token.encode("UTF-8")

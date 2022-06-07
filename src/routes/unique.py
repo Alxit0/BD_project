@@ -245,17 +245,28 @@ def subscribe_acmp(campaign_id):
 
 	try:
 		cur.execute(
-			"UPDATE campanha SET coupons = coupons - 1 WHERE id = %s RETURNING date_start, date_end",
+			"UPDATE campanha SET coupons = coupons - 1 WHERE id = %s RETURNING date_start, date_end, coupons",
 			(campaign_id, )
 		)
-		start, end = cur.fetchone()
+		start, end, coupons = cur.fetchone()
+		
 		if not (start < date.today() <= end):
+			con.rollback()
+			con.close()
 			return make_response(
 				"sucess",
-				f"Campaign fora do prazo: {start} ate {end}"
+				f"Campaign fora do prazo: {start} ate {end}."
 			)
+		if coupons < 0:
+			con.rollback()
+			con.close()
+			return make_response(
+				"sucess",
+				"Campaign ended due to all coupons selled."
+			)
+		
 		cur.execute(
-			"INSERT INTO cupoes (campanha_id, comprador_id) VALUES (%s, %s)",
+			"INSERT INTO cupoes (campanha_id, comprador_id) VALUES (%s, %s);",
 			(campaign_id, get_id_from_token(request.headers['Authorization'].split()[1]))
 		)
 
@@ -266,6 +277,10 @@ def subscribe_acmp(campaign_id):
 			"sucess",
 			"You have already subscribed in this campign."
 		)
+	
+	con.commit()
+	con.close()
+	
 	return make_response(
 		"sucess",
 		{"campaign_id": campaign_id, "expiration_date": get_expire_date(get_cur_date(), 1)}
