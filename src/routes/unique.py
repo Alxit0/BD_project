@@ -7,7 +7,7 @@ else:
 	from .utils import *
 
 unique_routes = Blueprint("unique_routes", __name__)
-campanha_atrs = ["descricao", "date_start", "date_end", "coupons", "dicount", "validade_cupao_dias"]
+campanha_atrs = ["descricao", "date_start", "date_end", "coupons", "discount", "validade_cupao_dias"]
 
 @unique_routes.before_request
 def verify_token():
@@ -35,9 +35,25 @@ def make_order():
 		)
 	elif type(payload['cart']) != list:
 		return wrong_cart_config_response
-
+	
 	con = db_connection()
 	cur = con.cursor()
+	
+	desconto = 1.0
+	if "coupon" in payload:
+		cur.execute(
+			"SELECT discount FROM cupoes WHERE id = %s;",
+			(payload["coupon"],)
+		)
+
+	temp = cur.fetchone()
+	if cur.fetchone() is None:
+		return make_response(
+			"api_error",
+			"No coupond found. Plese use another or eliminate the field 'coupon'."
+		)
+
+	desconto = temp[0]/100
 
 	total = 0
 	num = 0
@@ -88,10 +104,16 @@ def make_order():
 		)
 
 	cur.execute(
+		"DELETE FROM cupoes WHERE id = %s AND comprador_id = %s;",
+		(payload["coupon"], get_id_from_token(request.headers['Authorization'].split()[1]))
+	)
+
+	cur.execute(
 		"INSERT INTO orders (total, num_orders, _date, comprador_id) VALUES (%s, %s, %s, %s) RETURNING id;",
-		(total, num, get_cur_month(), get_id_from_token(request.headers['Authorization'].split()[1]))
+		(total*desconto, num, get_cur_month(), get_id_from_token(request.headers['Authorization'].split()[1]))
 	)
 	order_id = cur.fetchone()[0]
+
 	# print(total)
 	con.commit()
 	con.close()
@@ -245,10 +267,10 @@ def subscribe_acmp(campaign_id):
 
 	try:
 		cur.execute(
-			"UPDATE campanha SET coupons = coupons - 1 WHERE id = %s RETURNING date_start, date_end, coupons",
+			"UPDATE campanha SET coupons = coupons - 1 WHERE id = %s RETURNING date_start, date_end, coupons, discount;",
 			(campaign_id, )
 		)
-		start, end, coupons = cur.fetchone()
+		start, end, coupons, discount = cur.fetchone()
 		
 		if not (start < date.today() <= end):
 			con.rollback()
@@ -257,6 +279,7 @@ def subscribe_acmp(campaign_id):
 				"sucess",
 				f"Campaign fora do prazo: {start} ate {end}."
 			)
+		
 		if coupons < 0:
 			con.rollback()
 			con.close()
@@ -266,8 +289,18 @@ def subscribe_acmp(campaign_id):
 			)
 		
 		cur.execute(
-			"INSERT INTO cupoes (campanha_id, comprador_id) VALUES (%s, %s);",
-			(campaign_id, get_id_from_token(request.headers['Authorization'].split()[1]))
+			"INSERT INTO cupoes (campanha_id, comprador_id, discount) VALUES (%s, %s, %s) RETURNING id;",
+			(campaign_id, get_id_from_token(request.headers['Authorization'].split()[1]), discount)
+		)
+
+		cupon_id = cur.fetchone()[0]
+		
+		con.commit()
+		con.close()
+		
+		return make_response(
+			"sucess",
+			{"campaign_id": cupon_id, "expiration_date": get_expire_date(get_cur_date(), 1)}
 		)
 
 	except errors.UniqueViolation:
@@ -277,11 +310,3 @@ def subscribe_acmp(campaign_id):
 			"sucess",
 			"You have already subscribed in this campign."
 		)
-	
-	con.commit()
-	con.close()
-	
-	return make_response(
-		"sucess",
-		{"campaign_id": campaign_id, "expiration_date": get_expire_date(get_cur_date(), 1)}
-	)

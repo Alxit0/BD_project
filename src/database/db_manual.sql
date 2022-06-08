@@ -18,6 +18,9 @@ DROP TABLE orders CASCADE;
 DROP TABLE ratings CASCADE;
 DROP TABLE questions CASCADE;
 DROP TABLE notificacoes CASCADE;
+DROP TABLE campanha CASCADE;
+DROP TABLE cupoes CASCADE;
+DROP TYPE int_str;
 
 CREATE TYPE int_str as (f1 int, f2 text);
 
@@ -135,15 +138,17 @@ CREATE TABLE campanha (
 	date_start			DATE NOT NULL,
 	date_end			DATE NOT NULL,
 	coupons				INT NOT NULL,
-	dicount				INT NOT NULL,
+	discount			INT NOT NULL,
 	validade_cupao_dias	INT NOT NULL,
 	cupoes_generated	INT NOT NULL,
 	PRIMARY KEY(id)
 );
 
 CREATE TABLE cupoes (
+	id				SERIAL UNIQUE,
 	campanha_id		INT NOT NULL,
 	comprador_id	INT NOT NULL,
+	discount		INT NOT NULL,
 	PRIMARY KEY(campanha_id, comprador_id)
 );
 
@@ -164,7 +169,7 @@ ALTER TABLE questions ADD CONSTRAINT questions_fk2 FOREIGN KEY (utilizador_id) R
 ALTER TABLE questions ADD CONSTRAINT questions_fk3 FOREIGN KEY (parent_question) REFERENCES questions(id);
 ALTER TABLE notificacoes ADD CONSTRAINT notificacoes_fk1 FOREIGN KEY (utilizador_id) REFERENCES utilizador(id);
 ALTER TABLE cupoes ADD CONSTRAINT cupoes_fk1 FOREIGN KEY (campanha_id) REFERENCES campanha(id);
-ALTER TABLE cupoes ADD CONSTRAINT cupoes_fk2 FOREIGN KEY (comprador_id) REFERENCES comprador(id);
+ALTER TABLE cupoes ADD CONSTRAINT cupoes_fk2 FOREIGN KEY (comprador_id) REFERENCES comprador(utilizador_id);
 
 
 -- trigers
